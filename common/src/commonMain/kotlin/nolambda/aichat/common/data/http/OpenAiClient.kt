@@ -4,6 +4,11 @@ import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.defaultRequest
+import io.ktor.client.plugins.logging.DEFAULT
+import io.ktor.client.plugins.logging.LogLevel
+import io.ktor.client.plugins.logging.Logger
+import io.ktor.client.plugins.logging.Logging
+import io.ktor.client.plugins.logging.SIMPLE
 import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.header
 import io.ktor.client.request.preparePost
@@ -23,11 +28,15 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import nolambda.aichat.BuildKonfig
+import nolambda.aichat.common.data.model.AiModel
 import nolambda.aichat.common.data.model.CompletionChunk
+import nolambda.aichat.common.home.model.Message
 
 class OpenAiClient(
     private val baseUrl: String = "https://api.openai.com/v1/",
     private val token: String = BuildKonfig.OPEN_AI_TOKEN,
+    private val tokenCounter: TokenCounter = SpaceTokenCounter(),
+    private val aiModel: AiModel,
 ) {
 
     companion object {
@@ -51,33 +60,67 @@ class OpenAiClient(
                 encodeDefaults = true
             })
         }
+        install(Logging) {
+            logger = Logger.SIMPLE
+            level = LogLevel.BODY
+        }
     }
 
-    private fun createCompletionParameter(prompt: String): JsonObject {
-        val messages = JsonArray(
-            listOf(
-                JsonObject(
-                    mapOf(
-                        "role" to JsonPrimitive("user"),
-                        "content" to JsonPrimitive(prompt)
-                    )
-                )
-            )
-        )
+    private fun createMessageParam(message: Message): JsonObject {
+        val role = when (message.actor) {
+            Message.Actor.Person -> "user"
+            Message.Actor.Bot -> "assistant"
+        }
+
         return JsonObject(
             mapOf(
-                "model" to JsonPrimitive("gpt-3.5-turbo"),
-                "stream" to JsonPrimitive(true),
-                "max_tokens" to JsonPrimitive(1000),
-                "messages" to messages,
+                "role" to JsonPrimitive(role),
+                "content" to JsonPrimitive(message.text)
             )
         )
     }
 
-    suspend fun getCompletion(prompt: String): Flow<CompletionChunk> {
+    private fun createCompletionParameter(prompt: String, prevMessages: List<Message>): JsonObject {
+        val newPrompt = JsonObject(
+            mapOf(
+                "role" to JsonPrimitive("user"),
+                "content" to JsonPrimitive(prompt)
+            )
+        )
+
+        // Set up the context and make sure it doesn't exceed the token limit
+        var tokenCount = 0
+        val messageContent = mutableListOf<JsonObject>()
+
+        for (msg in prevMessages.asReversed()) {
+            val addition = tokenCounter.countToken(msg.text)
+            if (tokenCount + addition + aiModel.maxTokenResult > aiModel.tokenLimit) {
+                break
+            }
+            tokenCount += addition
+            messageContent.add(createMessageParam(msg))
+        }
+
+        // Add a new prompt
+        messageContent.add(newPrompt)
+
+        return JsonObject(
+            mapOf(
+                "model" to JsonPrimitive(aiModel.modelName),
+                "stream" to JsonPrimitive(true),
+                "max_tokens" to JsonPrimitive(aiModel.maxTokenResult),
+                "messages" to JsonArray(messageContent),
+            )
+        )
+    }
+
+    suspend fun getCompletion(
+        prompt: String,
+        prevMessages: List<Message> = emptyList(),
+    ): Flow<CompletionChunk> {
         val request = HttpRequestBuilder().apply {
             url("chat/completions")
-            setBody(createCompletionParameter(prompt))
+            setBody(createCompletionParameter(prompt, prevMessages))
         }
 
         return flow {
@@ -94,6 +137,16 @@ class OpenAiClient(
                     }
                 }
             }
+        }
+    }
+
+    interface TokenCounter {
+        fun countToken(text: String): Int
+    }
+
+    class SpaceTokenCounter : TokenCounter {
+        override fun countToken(text: String): Int {
+            return text.count { it == ' ' } + 1
         }
     }
 }

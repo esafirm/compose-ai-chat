@@ -62,8 +62,11 @@ kotlin {
                 implementation(libs.ktor.contentNegotiation)
                 implementation(libs.ktor.serialization)
                 implementation(libs.ktor.auth)
+                implementation(libs.ktor.logging)
 
                 implementation(libs.voyager.navigator)
+
+                implementation("org.jetbrains:markdown:0.4.1")
             }
         }
         val commonTest by getting {

@@ -1,13 +1,7 @@
 package nolambda.aichat.common.home.view
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.Icon
@@ -21,11 +15,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.composed
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.dp
-import nolambda.aichat.common.LocalImage
-import nolambda.aichat.common.LocalImages
 import nolambda.aichat.common.home.model.Message
 
 @Composable
@@ -43,7 +32,7 @@ internal fun ChatView(
             items(messages) { message ->
                 ChatItemView(
                     actor = message.actor,
-                    text = message.message
+                    text = message.text
                 )
             }
             if (streamedMessage.isNotBlank()) {
