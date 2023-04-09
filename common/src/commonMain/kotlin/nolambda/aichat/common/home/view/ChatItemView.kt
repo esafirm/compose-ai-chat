@@ -1,12 +1,15 @@
 package nolambda.aichat.common.home.view
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -16,20 +19,18 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import nolambda.aichat.common.LocalImage
 import nolambda.aichat.common.LocalImages
+import nolambda.aichat.common.home.model.ChatElement
 import nolambda.aichat.common.home.model.Message
-import org.intellij.markdown.ast.ASTNode
-import org.intellij.markdown.ast.getTextInNode
-import org.intellij.markdown.flavours.commonmark.CommonMarkFlavourDescriptor
-import org.intellij.markdown.parser.MarkdownParser
 
 @Composable
 internal fun ChatItemView(
     actor: Message.Actor,
-    text: String,
+    chatElements: List<ChatElement>,
     modifier: Modifier = Modifier,
 ) {
 
@@ -59,27 +60,46 @@ internal fun ChatItemView(
 
         Spacer(modifier = Modifier.width(16.dp))
 
-        val annotatedString = remember(text) {
+        Column(
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            chatElements.forEachIndexed { index, el ->
 
-            val flavour = CommonMarkFlavourDescriptor()
-            val parsedTree = MarkdownParser(flavour).buildMarkdownTreeFromString(text)
+                // Add spacing between each element
+                if (index > 0) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
 
-            fun printChildren(depth: Int, node: ASTNode) {
-                node.children.forEach {
-                    println(" ".repeat(depth) + node.type.toString() + " -> " + it.getTextInNode(text))
-                    printChildren(depth + 1, it)
+                when (el) {
+                    is ChatElement.CodeBlock -> CodeBlockTextView(chatElement = el)
+                    is ChatElement.Text -> SimpleMarkdownTextView(chatElement = el)
                 }
             }
-            printChildren(0, parsedTree)
-
-            createAnnotatedString(text)
         }
-
-        Text(text = annotatedString)
     }
 }
 
-val backtickPattern = "`(.+?)`".toRegex()
+@Composable
+internal fun CodeBlockTextView(chatElement: ChatElement.CodeBlock) {
+    Text(
+        text = chatElement.value,
+        modifier = Modifier.fillMaxWidth()
+            .background(Color.LightGray.copy(0.8F), shape = RoundedCornerShape(8.dp))
+            .padding(16.dp),
+        fontFamily = FontFamily.Monospace,
+    )
+}
+
+@Composable
+internal fun SimpleMarkdownTextView(chatElement: ChatElement.Text) {
+    val annotatedString = remember(chatElement) {
+        createAnnotatedString(chatElement.value)
+    }
+
+    Text(text = annotatedString)
+}
+
+private val backtickPattern = "`(.+?)`".toRegex()
 
 private fun createAnnotatedString(text: String): AnnotatedString {
     val annotatedSpans = mutableListOf<AnnotatedString.Range<SpanStyle>>()

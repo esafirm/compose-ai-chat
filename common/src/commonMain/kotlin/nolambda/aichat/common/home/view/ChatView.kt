@@ -15,12 +15,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import nolambda.aichat.common.home.model.ChatElement
 import nolambda.aichat.common.home.model.Message
 
 @Composable
 internal fun ChatView(
     messages: List<Message> = emptyList(),
-    streamedMessage: String = "",
+    streamedMessage: List<ChatElement> = emptyList(),
     onSendMessage: (message: String) -> Unit,
 ) {
     val (message, setMessage) = remember { mutableStateOf("") }
@@ -32,14 +33,14 @@ internal fun ChatView(
             items(messages) { message ->
                 ChatItemView(
                     actor = message.actor,
-                    text = message.text
+                    chatElements = message.chatElements
                 )
             }
-            if (streamedMessage.isNotBlank()) {
+            if (streamedMessage.isNotEmpty()) {
                 item {
                     ChatItemView(
                         actor = Message.Actor.Bot,
-                        text = streamedMessage
+                        chatElements = streamedMessage
                     )
                 }
             }
