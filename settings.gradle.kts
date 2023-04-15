@@ -34,3 +34,4 @@ rootProject.name = "ai-chat"
 include(":androidApp")
 include(":common")
 include(":desktopApp")
+include(":entrypoint")

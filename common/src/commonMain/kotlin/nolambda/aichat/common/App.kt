@@ -5,6 +5,6 @@ import cafe.adriel.voyager.navigator.Navigator
 import nolambda.aichat.common.home.HomeScreen
 
 @Composable
-internal fun App() {
+fun App() {
     Navigator(HomeScreen())
 }
